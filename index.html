@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <title>Xpress9</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; background: #f4f4f4; }
+    h1 { text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { padding: 0.75rem; border: 1px solid #ccc; text-align: center; }
+    tr.done { background: #d3ffd3; color: #666; }
+    button { padding: 0.5rem 1rem; cursor: pointer; }
+    #reset { margin-top: 1rem; display: block; }
+  </style>
+</head>
+<body>
+
+  <h1>Registro de Tiros - Mochila B</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Disco</th>
+        <th>Tiros</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody id="disc-table-body">
+      <!-- Filas generadas dinámicamente -->
+    </tbody>
+  </table>
+  <button id="reset">Resetear ronda</button>
+<button id="undo">Deshacer</button>
+<script>
+  // Estado inicial de los discos
+    const initialDiscs = [
+      { tipo: 'Putter (C1)', name: 'Birdie', vuelo: '1 / 2 / 0 / 0', count: 0, done: false },
+      { tipo: 'Putter (C2)', name: 'Fuego', vuelo: '3 / 4 / 0 / 1', count: 0, done: false },
+      { tipo: 'Midrange', name: 'Buzz', vuelo: '5 / 4 / -1 / 1', count: 0, done: false },
+      { tipo: 'Midrange', name: 'Zone', vuelo: '4 / 3 / 0 / 3', count: 0, done: false },
+      { tipo: 'Midrange', name: 'Shark', vuelo: '4 / 4 / 0 / 2', count: 0, done: false },
+      { tipo: 'Fairway', name: 'Leopard', vuelo: '6 / 5 / -2 / 1', count: 0, done: false },
+      { tipo: 'Fairway', name: 'Troll', vuelo: '7 / 5 / -1 / 2', count: 0, done: false },
+      { tipo: 'Driver', name: 'F Model S Glow', vuelo: '10 / 5 / 1 / 3', count: 0, done: false },
+      { tipo: 'Driver', name: 'Valkyrie', vuelo: '9 / 4 / -2 / 2', count: 0, done: false }
+    ];
+
+    let discs = JSON.parse(JSON.stringify(initialDiscs));
+    const history = [];
+    const tbody = document.getElementById('disc-table-body');
+
+    function renderTable() {
+      tbody.innerHTML = '';
+      discs.forEach((disc, idx) => {
+        const tr = document.createElement('tr');
+        if (disc.done) tr.classList.add('done');
+        tr.innerHTML = `
+          <td>${disc.tipo}</td>
+          <td>${disc.name}</td>
+          <td>${disc.count}</td>
+          <td>
+            <button data-idx="${idx}" class="throw-btn" ${disc.done ? 'disabled' : ''}>Tirar</button>
+            <button data-idx="${idx}" class="toggle-btn">${disc.done ? 'Reabrir' : 'Completado'}</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      bindButtons();
+      // Deshabilitar deshacer si no hay historial
+      document.getElementById('undo').disabled = history.length === 0;
+    }
+
+    function bindButtons() {
+      document.querySelectorAll('.throw-btn').forEach(btn => {
+        btn.onclick = () => {
+          const i = btn.dataset.idx;
+          // Guardar estado previo
+          history.push({ type: 'throw', idx: parseInt(i), prevCount: discs[i].count });
+          discs[i].count += 1;
+          renderTable();
+        };
+      });
+      document.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.onclick = () => {
+          const i = btn.dataset.idx;
+          history.push({ type: 'toggle', idx: parseInt(i), prevDone: discs[i].done });
+          discs[i].done = !discs[i].done;
+          renderTable();
+        };
+      });
+    }
+
+    document.getElementById('reset').onclick = () => {
+      history.push({ type: 'reset', prevState: JSON.parse(JSON.stringify(discs)) });
+      discs = JSON.parse(JSON.stringify(initialDiscs));
+      renderTable();
+    };
+
+    document.getElementById('undo').onclick = () => {
+      const last = history.pop();
+      if (!last) return;
+      switch (last.type) {
+        case 'throw':
+          discs[last.idx].count = last.prevCount;
+          break;
+        case 'toggle':
+          discs[last.idx].done = last.prevDone;
+          break;
+        case 'reset':
+          discs = JSON.parse(JSON.stringify(last.prevState));
+          break;
+      }
+      renderTable();
+    };
+
+    // Atajo de teclado Ctrl+Z
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        document.getElementById('undo').click();
+        e.preventDefault();
+      }
+    });
+
+    // Inicializa la tabla
+    renderTable();
+</script>
+</body>
+</html>
